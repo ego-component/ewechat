@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	redirectOauthURL       = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s#wechat_redirect"
+	redirectOauthURL       = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s&connect_redirect=1#wechat_redirect"
 	webAppRedirectOauthURL = "https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s#wechat_redirect"
 	accessTokenURL         = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
 	refreshAccessTokenURL  = "https://api.weixin.qq.com/sns/oauth2/refresh_token?appid=%s&grant_type=refresh_token&refresh_token=%s"
@@ -19,21 +19,21 @@ const (
 	checkAccessTokenURL    = "https://api.weixin.qq.com/sns/auth?access_token=%s&openid=%s"
 )
 
-//Oauth 保存用户授权信息
+// Oauth 保存用户授权信息
 type Oauth struct {
 	*context.Context
 }
 
-//NewOauth 实例化授权信息
+// NewOauth 实例化授权信息
 func NewOauth(context *context.Context) *Oauth {
 	auth := new(Oauth)
 	auth.Context = context
 	return auth
 }
 
-//GetRedirectURL 获取跳转的url地址
+// GetRedirectURL 获取跳转的url地址
 func (oauth *Oauth) GetRedirectURL(redirectURI, scope, state string) (string, error) {
-	//url encode
+	// url encode
 	urlStr := url.QueryEscape(redirectURI)
 	return fmt.Sprintf(redirectOauthURL, oauth.AppID, urlStr, scope, state), nil
 }
@@ -48,7 +48,7 @@ func (oauth *Oauth) AuthCodeURL(redirectURI, scope, state string) string {
 	return fmt.Sprintf(webAppRedirectOauthURL, oauth.AppID, urlStr, scope, state)
 }
 
-//Redirect 跳转到网页授权
+// Redirect 跳转到网页授权
 func (oauth *Oauth) Redirect(writer http.ResponseWriter, req *http.Request, redirectURI, scope, state string) error {
 	location, err := oauth.GetRedirectURL(redirectURI, scope, state)
 	if err != nil {
@@ -74,7 +74,8 @@ type ResAccessToken struct {
 }
 
 // ExchangeTokenURL 通过网页授权的code 换取access_token(区别于context中的access_token) 通过 code 换取网页授权 access_token.
-//  NOTE: 返回的 token == clt.Token
+//
+//	NOTE: 返回的 token == clt.Token
 func (oauth *Oauth) ExchangeTokenURL(code string) (result ResAccessToken, err error) {
 	urlStr := fmt.Sprintf(accessTokenURL, oauth.AppID, oauth.AppSecret, code)
 	var response []byte
@@ -87,16 +88,17 @@ func (oauth *Oauth) ExchangeTokenURL(code string) (result ResAccessToken, err er
 		return
 	}
 	if result.ErrCode != 0 {
-		err = fmt.Errorf("GetUserAccessToken error : errcode=%v , errmsg=%v", result.ErrCode, result.ErrMsg)
+		err = fmt.Errorf("ExchangeTokenURL error : errcode=%v , errmsg=%v", result.ErrCode, result.ErrMsg)
 		return
 	}
 	return
 }
 
 // RefreshToken 刷新 access_token.
-//  NOTE:
-//  1. refreshToken 可以为空.
-//  2. 返回的 token == clt.Token
+//
+//	NOTE:
+//	1. refreshToken 可以为空.
+//	2. 返回的 token == clt.Token
 func (oauth *Oauth) RefreshToken(refreshToken string) (result ResAccessToken, err error) {
 	urlStr := fmt.Sprintf(refreshAccessTokenURL, oauth.AppID, refreshToken)
 	var response []byte
@@ -136,7 +138,7 @@ func (oauth *Oauth) CheckToken(accessToken, openID string) (b bool, err error) {
 	return
 }
 
-//UserInfo 用户授权获取到用户信息
+// UserInfo 用户授权获取到用户信息
 type UserInfo struct {
 	util.CommonError
 
@@ -151,7 +153,7 @@ type UserInfo struct {
 	Unionid    string   `json:"unionid"`
 }
 
-//GetUserInfo 如果scope为 snsapi_userinfo 则可以通过此方法获取到用户基本信息
+// GetUserInfo 如果scope为 snsapi_userinfo 则可以通过此方法获取到用户基本信息
 func (oauth *Oauth) GetUserInfo(accessToken, openID, lang string) (result UserInfo, err error) {
 	if lang == "" {
 		lang = "zh_CN"
